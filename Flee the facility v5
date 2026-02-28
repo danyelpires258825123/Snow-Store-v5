@@ -1,0 +1,969 @@
+-- Snow Store | Flee the Facility Script - Completo e Corrigido
+-- ESP Beast fixo em vermelho, ESP PC muda de azul escuro para verde quando completo
+-- ESP Player NÃO pega na besta (corrigido)
+-- ESP Exit em AMARELO pega as 2 portas em todos os mapas (corrigido)
+-- ESP PC pega em TODOS os computadores do mapa (corrigido)
+local player = game.Players.LocalPlayer
+local gui = Instance.new("ScreenGui")
+gui.Parent = player.PlayerGui
+gui.ResetOnSpawn = false
+gui.Name = "SnowStoreGUI"
+-- =============================================
+-- CONFIGURAÇÕES DE CORES (Tema Snow Store)
+-- =============================================
+local COLORS = {
+Background = Color3.fromRGB(15, 15, 15),
+TitleBar = Color3.fromRGB(139, 0, 0),
+TitleBarGradient = Color3.fromRGB(180, 0, 0),
+Button = Color3.fromRGB(40, 40, 40),
+ButtonHover = Color3.fromRGB(60, 60, 60),
+CheckboxInactive = Color3.fromRGB(30, 30, 30),
+CheckboxActive = Color3.fromRGB(200, 0, 0),
+Text = Color3.fromRGB(255, 255, 255),
+TextDark = Color3.fromRGB(200, 200, 200),
+Accent = Color3.fromRGB(220, 20, 60)
+}
+-- =============================================
+-- BOTÃO FLUTUANTE (Posicionado na direita da tela)
+-- =============================================
+local buttonFrame = Instance.new("Frame")
+buttonFrame.Name = "SnowButton"
+buttonFrame.Size = UDim2.new(0, 50, 0, 50)
+buttonFrame.Position = UDim2.new(1, -70, 0.5, -25)
+buttonFrame.BackgroundTransparency = 1
+buttonFrame.Active = true
+buttonFrame.Parent = gui
+local imageButton = Instance.new("ImageButton")
+imageButton.Name = "MainButton"
+imageButton.Size = UDim2.new(1, 0, 1, 0)
+imageButton.BackgroundTransparency = 1
+imageButton.Image = "rbxassetid://103764844043716"
+imageButton.ScaleType = Enum.ScaleType.Stretch
+imageButton.Active = true
+imageButton.Parent = buttonFrame
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(0, 10)
+uiCorner.Parent = imageButton
+local uiStroke = Instance.new("UIStroke")
+uiStroke.Color = COLORS.Accent
+uiStroke.Thickness = 2
+uiStroke.Parent = imageButton
+-- Sistema de arrasto do botão
+local draggingButton = false
+local dragStartPos = nil
+local buttonStartPos = nil
+imageButton.InputBegan:Connect(function(input)
+if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+draggingButton = true
+dragStartPos = input.Position
+buttonStartPos = buttonFrame.Position
+    input.Changed:Connect(function()
+        if input.UserInputState == Enum.UserInputState.End then
+            draggingButton = false
+            dragStartPos = nil
+        end
+    end)
+end
+
+end)
+imageButton.InputChanged:Connect(function(input)
+if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+if draggingButton and dragStartPos then
+local delta = input.Position - dragStartPos
+buttonFrame.Position = UDim2.new(
+buttonStartPos.X.Scale,
+buttonStartPos.X.Offset + delta.X,
+buttonStartPos.Y.Scale,
+buttonStartPos.Y.Offset + delta.Y
+)
+end
+end
+end)
+-- =============================================
+-- PAINEL PRINCIPAL (280x350)
+-- =============================================
+local panel = Instance.new("Frame")
+panel.Name = "MainPanel"
+panel.Size = UDim2.new(0, 280, 0, 350)
+panel.Position = UDim2.new(0.5, -140, 0.5, -175)
+panel.BackgroundColor3 = COLORS.Background
+panel.BorderSizePixel = 0
+panel.Visible = false
+panel.ClipsDescendants = true
+panel.Parent = gui
+local panelCorner = Instance.new("UICorner")
+panelCorner.CornerRadius = UDim.new(0, 10)
+panelCorner.Parent = panel
+-- Sombra do painel
+local shadow = Instance.new("ImageLabel")
+shadow.Name = "Shadow"
+shadow.AnchorPoint = Vector2.new(0.5, 0.5)
+shadow.BackgroundTransparency = 1
+shadow.Position = UDim2.new(0.5, 0, 0.5, 0)
+shadow.Size = UDim2.new(1, 20, 1, 20)
+shadow.Image = "rbxassetid://5554236805"
+shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+shadow.ImageTransparency = 0.6
+shadow.ScaleType = Enum.ScaleType.Slice
+shadow.SliceCenter = Rect.new(23, 23, 277, 277)
+shadow.ZIndex = -1
+shadow.Parent = panel
+-- =============================================
+-- TÍTULO DO PAINEL (Fixo - Fora da rolagem)
+-- =============================================
+local titleBar = Instance.new("Frame")
+titleBar.Name = "TitleBar"
+titleBar.Size = UDim2.new(1, 0, 0, 45)
+titleBar.BackgroundColor3 = COLORS.TitleBar
+titleBar.BorderSizePixel = 0
+titleBar.Active = true
+titleBar.Parent = panel
+local titleGradient = Instance.new("UIGradient")
+titleGradient.Color = ColorSequence.new({
+ColorSequenceKeypoint.new(0, COLORS.TitleBar),
+ColorSequenceKeypoint.new(0.5, COLORS.TitleBarGradient),
+ColorSequenceKeypoint.new(1, COLORS.TitleBar)
+})
+titleGradient.Parent = titleBar
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 10)
+titleCorner.Parent = titleBar
+-- Ajuste para canto superior
+local titleFix = Instance.new("Frame")
+titleFix.Size = UDim2.new(1, 0, 0, 10)
+titleFix.Position = UDim2.new(0, 0, 1, -10)
+titleFix.BackgroundColor3 = COLORS.TitleBar
+titleFix.BorderSizePixel = 0
+titleFix.Parent = titleBar
+-- Texto do título
+local titleText = Instance.new("TextLabel")
+titleText.Name = "Title"
+titleText.Size = UDim2.new(1, -50, 1, 0)
+titleText.Position = UDim2.new(0, 12, 0, 0)
+titleText.BackgroundTransparency = 1
+titleText.Text = "Snow Store | Flee the Facility"
+titleText.TextColor3 = COLORS.Text
+titleText.TextSize = 16
+titleText.Font = Enum.Font.GothamBold
+titleText.TextXAlignment = Enum.TextXAlignment.Left
+titleText.Parent = titleBar
+-- Botão X
+local closeButton = Instance.new("TextButton")
+closeButton.Name = "CloseBtn"
+closeButton.Size = UDim2.new(0, 32, 0, 32)
+closeButton.Position = UDim2.new(1, -38, 0.5, -16)
+closeButton.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+closeButton.Text = "X"
+closeButton.TextColor3 = COLORS.Text
+closeButton.TextSize = 14
+closeButton.Font = Enum.Font.GothamBold
+closeButton.AutoButtonColor = false
+closeButton.ZIndex = 10
+closeButton.Parent = titleBar
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 6)
+closeCorner.Parent = closeButton
+-- Efeito hover no X
+closeButton.MouseEnter:Connect(function()
+closeButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+end)
+closeButton.MouseLeave:Connect(function()
+closeButton.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+end)
+closeButton.MouseButton1Click:Connect(function()
+panel.Visible = false
+end)
+-- =============================================
+-- SISTEMA DE ARRASTO DO PAINEL
+-- =============================================
+local draggingPanel = false
+local panelDragStart = nil
+local panelStartPos = nil
+titleBar.InputBegan:Connect(function(input)
+if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+local mousePos = input.Position
+local closeAbsPos = closeButton.AbsolutePosition
+local closeSize = closeButton.AbsoluteSize
+    if mousePos.X >= closeAbsPos.X and mousePos.X <= closeAbsPos.X + closeSize.X and
+       mousePos.Y >= closeAbsPos.Y and mousePos.Y <= closeAbsPos.Y + closeSize.Y then
+        return
+    end
+    
+    draggingPanel = true
+    panelDragStart = input.Position
+    panelStartPos = panel.Position
+    
+    input.Changed:Connect(function()
+        if input.UserInputState == Enum.UserInputState.End then
+            draggingPanel = false
+            panelDragStart = nil
+        end
+    end)
+end
+
+end)
+titleBar.InputChanged:Connect(function(input)
+if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+if draggingPanel and panelDragStart then
+local delta = input.Position - panelDragStart
+panel.Position = UDim2.new(
+panelStartPos.X.Scale,
+panelStartPos.X.Offset + delta.X,
+panelStartPos.Y.Scale,
+panelStartPos.Y.Offset + delta.Y
+)
+end
+end
+end)
+-- =============================================
+-- SCROLLING FRAME (Conteúdo apenas, título fixo)
+-- =============================================
+local scrolling = Instance.new("ScrollingFrame")
+scrolling.Name = "Content"
+scrolling.Size = UDim2.new(1, -16, 1, -55)
+scrolling.Position = UDim2.new(0, 8, 0, 50)
+scrolling.BackgroundTransparency = 1
+scrolling.BorderSizePixel = 0
+scrolling.ScrollBarThickness = 3
+scrolling.ScrollBarImageColor3 = COLORS.Accent
+scrolling.ScrollingEnabled = true
+scrolling.CanvasSize = UDim2.new(0, 0, 0, 0)
+scrolling.Parent = panel
+local listLayout = Instance.new("UIListLayout")
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Padding = UDim.new(0, 8)
+listLayout.Parent = scrolling
+local padding = Instance.new("UIPadding")
+padding.PaddingTop = UDim.new(0, 5)
+padding.PaddingBottom = UDim.new(0, 10)
+padding.Parent = scrolling
+local function updateCanvasSize()
+scrolling.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 15)
+end
+listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvasSize)
+-- =============================================
+-- FUNÇÃO DE CHECKBOX PROFISSIONAL
+-- =============================================
+local function createCheckbox(name, callback)
+local container = Instance.new("Frame")
+container.Name = name .. "Container"
+container.Size = UDim2.new(1, 0, 0, 44)
+container.BackgroundColor3 = COLORS.Button
+container.BorderSizePixel = 0
+container.Parent = scrolling
+local containerCorner = Instance.new("UICorner")
+containerCorner.CornerRadius = UDim.new(0, 6)
+containerCorner.Parent = container
+
+local checkbox = Instance.new("Frame")
+checkbox.Name = "Checkbox"
+checkbox.Size = UDim2.new(0, 22, 0, 22)
+checkbox.Position = UDim2.new(0, 12, 0.5, -11)
+checkbox.BackgroundColor3 = COLORS.CheckboxInactive
+checkbox.BorderSizePixel = 0
+checkbox.Parent = container
+
+local checkboxCorner = Instance.new("UICorner")
+checkboxCorner.CornerRadius = UDim.new(0, 4)
+checkboxCorner.Parent = checkbox
+
+local checkboxStroke = Instance.new("UIStroke")
+checkboxStroke.Color = Color3.fromRGB(80, 80, 80)
+checkboxStroke.Thickness = 2
+checkboxStroke.Parent = checkbox
+
+local checkIcon = Instance.new("TextLabel")
+checkIcon.Name = "Check"
+checkIcon.Size = UDim2.new(1, 0, 1, 0)
+checkIcon.BackgroundTransparency = 1
+checkIcon.Text = "✓"
+checkIcon.TextColor3 = COLORS.Text
+checkIcon.TextSize = 16
+checkIcon.Font = Enum.Font.GothamBold
+checkIcon.Visible = false
+checkIcon.Parent = checkbox
+
+local label = Instance.new("TextLabel")
+label.Name = "Label"
+label.Size = UDim2.new(1, -50, 1, 0)
+label.Position = UDim2.new(0, 42, 0, 0)
+label.BackgroundTransparency = 1
+label.Text = name
+label.TextColor3 = COLORS.TextDark
+label.TextSize = 14
+label.Font = Enum.Font.GothamSemibold
+label.TextXAlignment = Enum.TextXAlignment.Left
+label.Parent = container
+
+local clickArea = Instance.new("TextButton")
+clickArea.Name = "ClickArea"
+clickArea.Size = UDim2.new(1, 0, 1, 0)
+clickArea.BackgroundTransparency = 1
+clickArea.Text = ""
+clickArea.Parent = container
+
+local state = false
+
+local function updateVisual()
+    if state then
+        checkbox.BackgroundColor3 = COLORS.CheckboxActive
+        checkboxStroke.Color = COLORS.CheckboxActive
+        checkIcon.Visible = true
+        label.TextColor3 = COLORS.Text
+        container.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    else
+        checkbox.BackgroundColor3 = COLORS.CheckboxInactive
+        checkboxStroke.Color = Color3.fromRGB(80, 80, 80)
+        checkIcon.Visible = false
+        label.TextColor3 = COLORS.TextDark
+        container.BackgroundColor3 = COLORS.Button
+    end
+end
+
+container.MouseEnter:Connect(function()
+    if not state then
+        container.BackgroundColor3 = COLORS.ButtonHover
+    end
+end)
+
+container.MouseLeave:Connect(function()
+    if not state then
+        container.BackgroundColor3 = COLORS.Button
+    end
+end)
+
+clickArea.MouseButton1Click:Connect(function()
+    state = not state
+    updateVisual()
+    callback(state)
+end)
+
+updateCanvasSize()
+return container
+
+end
+-- =============================================
+-- SISTEMAS ESP CORRIGIDOS E OTIMIZADOS
+-- =============================================
+local playerHighlights = {}
+local beastHighlight = nil
+local beastTarget = nil -- Guarda referência ao jogador besta atual
+local pcHighlights = {}
+local pcStatusConnections = {} -- Guarda conexões para monitorar status dos PCs
+local capsuleHighlights = {}
+local exitHighlights = {}
+local espStates = {
+Player = false,
+Beast = false,
+PC = false,
+Capsule = false,
+Exit = false
+}
+-- =============================================
+-- ESP PLAYER - CORRIGIDO (NÃO PEGA NA BESTA)
+-- =============================================
+local function updatePlayerHighlights()
+-- Limpa antigos
+for plr, hl in pairs(playerHighlights) do
+if hl then pcall(function() hl:Destroy() end) end
+end
+playerHighlights = {}
+if not espStates.Player then return end
+
+-- Primeiro, identifica quem é a besta atual
+local beastPlayer = nil
+for _, plr in ipairs(game.Players:GetPlayers()) do
+    local stats = plr:FindFirstChild("TempPlayerStatsModule")
+    if stats and stats:FindFirstChild("IsBeast") and stats.IsBeast.Value == true then
+        beastPlayer = plr
+        break
+    end
+end
+
+-- Cria highlights apenas para jogadores que NÃO são a besta
+for _, plr in ipairs(game.Players:GetPlayers()) do
+    -- Ignora: jogador local, besta atual, e jogadores sem character
+    if plr ~= player and plr ~= beastPlayer and plr.Character then
+        local success, hl = pcall(function()
+            local h = Instance.new("Highlight")
+            h.Name = "PlayerESP"
+            h.Adornee = plr.Character
+            h.OutlineColor = Color3.fromRGB(0, 255, 0) -- Verde fixo para players
+            h.FillTransparency = 1
+            h.OutlineTransparency = 0
+            h.Enabled = true
+            h.Parent = plr.Character
+            return h
+        end)
+        if success then
+            playerHighlights[plr] = hl
+        end
+    end
+end
+
+end
+-- =============================================
+-- ESP BEAST - CORRIGIDO (Sempre vermelho, não muda de cor)
+-- =============================================
+local function updateBeastHighlight()
+-- Remove highlight antigo
+if beastHighlight then
+pcall(function() beastHighlight:Destroy() end)
+beastHighlight = nil
+beastTarget = nil
+end
+if not espStates.Beast then return end
+
+-- Procura pela besta atual
+for _, plr in ipairs(game.Players:GetPlayers()) do
+    local stats = plr:FindFirstChild("TempPlayerStatsModule")
+    if stats and stats:FindFirstChild("IsBeast") and stats.IsBeast.Value == true then
+        if plr.Character then
+            local success, hl = pcall(function()
+                local h = Instance.new("Highlight")
+                h.Name = "BeastESP"
+                h.Adornee = plr.Character
+                h.OutlineColor = Color3.fromRGB(255, 0, 0) -- Vermelho fixo
+                h.FillTransparency = 1
+                h.OutlineTransparency = 0
+                h.Enabled = true
+                h.Parent = plr.Character
+                return h
+            end)
+            if success then
+                beastHighlight = hl
+                beastTarget = plr -- Guarda referência
+            end
+        end
+        break -- Só pode ter uma besta
+    end
+end
+
+end
+-- Função para verificar se a besta mudou
+local function checkBeastChanged()
+if not espStates.Beast then return end
+local currentBeast = nil
+for _, plr in ipairs(game.Players:GetPlayers()) do
+    local stats = plr:FindFirstChild("TempPlayerStatsModule")
+    if stats and stats:FindFirstChild("IsBeast") and stats.IsBeast.Value == true then
+        currentBeast = plr
+        break
+    end
+end
+
+-- Se a besta mudou ou não existe mais, atualiza
+if currentBeast ~= beastTarget then
+    updateBeastHighlight()
+end
+
+end
+-- =============================================
+-- ESP PC - CORRIGIDO: Pega em TODOS os computadores do mapa
+-- =============================================
+-- FUNÇÃO SIMPLIFICADA: Detecta o status do PC pela cor da tela
+local function getPCStatus(computer)
+-- Procura pela parte da tela/monitor dentro do computador
+local screen = nil
+-- Procura em todos os descendentes por partes que parecem ser telas
+for _, part in ipairs(computer:GetDescendants()) do
+    if part:IsA("BasePart") then
+        local name = part.Name:lower()
+        -- Nomes comuns para telas/monitores em Flee the Facility
+        if name:find("screen") or name:find("monitor") or name:find("display") or 
+           name:find("pcscreen") or name:find("lcd") or name:find("led") then
+            screen = part
+            break
+        end
+    end
+end
+
+-- Se não encontrou pelo nome, pega a primeira parte base que encontrar
+if not screen then
+    for _, part in ipairs(computer:GetDescendants()) do
+        if part:IsA("BasePart") then
+            screen = part
+            break
+        end
+    end
+end
+
+if screen then
+    local color = screen.Color
+    local r, g, b = color.R, color.G, color.B
+    
+    -- Verifica se é VERDE (hackeado/completo)
+    -- Verde puro: G alto, R e B baixos
+    if g > 0.4 and r < 0.3 and b < 0.3 then
+        return "Completed"
+    end
+    
+    -- Verifica se é VERMELHO (falhou/erro)
+    -- Vermelho: R alto, G e B baixos
+    if r > 0.4 and g < 0.3 and b < 0.3 then
+        return "Error"
+    end
+    
+    -- Verifica se é AZUL (disponível/normal)
+    -- Azul: B alto, R e G mais baixos
+    if b > 0.3 and r < 0.4 and g < 0.4 then
+        return "Normal"
+    end
+end
+
+-- Se não conseguiu pela cor, tenta verificar valores internos
+local hacked = computer:FindFirstChild("Hacked") or computer:FindFirstChild("Completed") or computer:FindFirstChild("Done")
+if hacked and hacked:IsA("ValueBase") and hacked.Value == true then
+    return "Completed"
+end
+
+local progress = computer:FindFirstChild("Progress") or computer:FindFirstChild("HackProgress")
+if progress and progress:IsA("ValueBase") then
+    local prog = tonumber(progress.Value)
+    if prog and (prog >= 100 or prog == 1) then
+        return "Completed"
+    elseif prog and prog > 0 then
+        return "Hacking"
+    end
+end
+
+local beingHacked = computer:FindFirstChild("BeingHacked") or computer:FindFirstChild("InUse")
+if beingHacked and beingHacked:IsA("ValueBase") and beingHacked.Value == true then
+    return "Hacking"
+end
+
+return "Normal"
+
+end
+local function updatePCHighlightColor(computer, highlight)
+-- Atualiza a cor baseada no status atual
+local status = getPCStatus(computer)
+if status == "Completed" then
+    highlight.OutlineColor = Color3.fromRGB(0, 255, 0) -- Verde brilhante quando completo
+elseif status == "Error" then
+    highlight.OutlineColor = Color3.fromRGB(255, 0, 0) -- Vermelho quando erro/falha
+elseif status == "Hacking" then
+    highlight.OutlineColor = Color3.fromRGB(255, 165, 0) -- Laranja quando sendo hackeado
+else
+    highlight.OutlineColor = Color3.fromRGB(0, 100, 255) -- Azul quando normal/disponível
+end
+
+return status
+
+end
+local function updatePCHighlights()
+-- Limpa highlights antigos e desconecta conexões
+for obj, hl in pairs(pcHighlights) do
+if hl then pcall(function() hl:Destroy() end) end
+end
+pcHighlights = {}
+for obj, conn in pairs(pcStatusConnections) do
+    if conn then 
+        for _, c in ipairs(conn) do
+            pcall(function() c:Disconnect() end)
+        end
+    end
+end
+pcStatusConnections = {}
+
+if not espStates.PC then return end
+
+-- Procura TODOS os computadores no workspace (sem verificação restritiva)
+local computers = {}
+
+-- Procura diretamente por objetos com nomes de computadores
+for _, obj in ipairs(workspace:GetDescendants()) do
+    if obj:IsA("Model") or obj:IsA("Part") or obj:IsA("Folder") then
+        local name = obj.Name:lower()
+        
+        -- Nomes de computadores no Flee the Facility - MAIS AMPLIO
+        if name:find("computer") or name:find("pc") or name:find("hack") or 
+           name == "computertable" or name == "computer" or name == "pc" or 
+           name:find("terminal") or name:find("station") then
+            
+            -- Verifica se tem pelo menos uma parte (para ter algo para destacar)
+            local hasPart = false
+            for _, child in ipairs(obj:GetDescendants()) do
+                if child:IsA("BasePart") then
+                    hasPart = true
+                    break
+                end
+            end
+            
+            if hasPart then
+                table.insert(computers, obj)
+            end
+        end
+    end
+end
+
+-- Cria highlights para todos os computadores encontrados
+for _, computer in ipairs(computers) do
+    local success, hl = pcall(function()
+        local h = Instance.new("Highlight")
+        h.Name = "PCESP"
+        h.Adornee = computer
+        h.FillTransparency = 1
+        h.OutlineTransparency = 0
+        h.Enabled = true
+        h.Parent = computer
+        
+        -- Define cor inicial
+        updatePCHighlightColor(computer, h)
+        
+        -- Monitora mudanças de cor em todas as partes
+        local connections = {}
+        
+        for _, child in ipairs(computer:GetDescendants()) do
+            if child:IsA("BasePart") then
+                local conn = child:GetPropertyChangedSignal("Color"):Connect(function()
+                    if pcHighlights[computer] and pcHighlights[computer].Parent then
+                        updatePCHighlightColor(computer, pcHighlights[computer])
+                    end
+                end)
+                table.insert(connections, conn)
+            end
+            
+            if child:IsA("ValueBase") then
+                local conn = child.Changed:Connect(function()
+                    if pcHighlights[computer] and pcHighlights[computer].Parent then
+                        updatePCHighlightColor(computer, pcHighlights[computer])
+                    end
+                end)
+                table.insert(connections, conn)
+            end
+        end
+        
+        -- Monitora novos filhos
+        local childAddedConn = computer.DescendantAdded:Connect(function(desc)
+            task.wait(0.1)
+            if pcHighlights[computer] and pcHighlights[computer].Parent then
+                updatePCHighlightColor(computer, pcHighlights[computer])
+            end
+            
+            if desc:IsA("BasePart") then
+                local conn = desc:GetPropertyChangedSignal("Color"):Connect(function()
+                    if pcHighlights[computer] and pcHighlights[computer].Parent then
+                        updatePCHighlightColor(computer, pcHighlights[computer])
+                    end
+                end)
+                table.insert(connections, conn)
+            end
+            
+            if desc:IsA("ValueBase") then
+                local conn = desc.Changed:Connect(function()
+                    if pcHighlights[computer] and pcHighlights[computer].Parent then
+                        updatePCHighlightColor(computer, pcHighlights[computer])
+                    end
+                end)
+                table.insert(connections, conn)
+            end
+        end)
+        table.insert(connections, childAddedConn)
+        
+        pcStatusConnections[computer] = connections
+        
+        return h
+    end)
+    
+    if success then
+        pcHighlights[computer] = hl
+    end
+end
+
+print("ESP PC: Encontrados " .. #computers .. " computadores")
+
+end
+-- =============================================
+-- ESP CAPSULA - OTIMIZADO
+-- =============================================
+local function updateCapsuleHighlights()
+for obj, hl in pairs(capsuleHighlights) do
+if hl then pcall(function() hl:Destroy() end) end
+end
+capsuleHighlights = {}
+if not espStates.Capsule then return end
+
+local pods = {}
+
+-- Procura diretamente por todas as cápsulas no workspace
+for _, obj in ipairs(workspace:GetDescendants()) do
+    if obj:IsA("Model") or obj:IsA("Part") then
+        local name = obj.Name:lower()
+        if name == "freezepod" or name == "capsule" or name == "pod" or 
+           name == "cryopod" or name:find("freeze") or name:find("pod") then
+            table.insert(pods, obj)
+        end
+    end
+end
+
+for _, obj in ipairs(pods) do
+    local success, hl = pcall(function()
+        local h = Instance.new("Highlight")
+        h.Name = "CapsuleESP"
+        h.Adornee = obj
+        h.OutlineColor = Color3.fromRGB(0, 191, 255) -- Ciano
+        h.FillTransparency = 1
+        h.OutlineTransparency = 0
+        h.Enabled = true
+        h.Parent = obj
+        return h
+    end)
+    if success then
+        capsuleHighlights[obj] = hl
+    end
+end
+
+end
+-- =============================================
+-- ESP EXIT - CORRIGIDO: Pega as 2 portas em TODOS os mapas
+-- =============================================
+local function updateExitHighlights()
+for obj, hl in pairs(exitHighlights) do
+if hl then pcall(function() hl:Destroy() end) end
+end
+exitHighlights = {}
+if not espStates.Exit then return end
+
+local exits = {}
+
+-- MÉTODO 1: Procura diretamente por objetos chamados "ExitDoor" (nome oficial no jogo)
+for _, obj in ipairs(workspace:GetDescendants()) do
+    if obj:IsA("Model") or obj:IsA("Part") then
+        -- Nome exato "ExitDoor" é o nome oficial das portas no Flee the Facility
+        if obj.Name == "ExitDoor" or obj.Name == "Exit" or obj.Name == "EscapeDoor" then
+            table.insert(exits, obj)
+        end
+    end
+end
+
+-- MÉTODO 2: Procura por padrões de nomes em diferentes mapas
+for _, obj in ipairs(workspace:GetDescendants()) do
+    if obj:IsA("Model") or obj:IsA("Part") then
+        local name = obj.Name:lower()
+        
+        -- Padrões comuns de nomes de saídas em diferentes mapas
+        if name == "exit1" or name == "exit2" or name == "exit_a" or name == "exit_b" or
+           name == "exitdoor1" or name == "exitdoor2" or name == "door_exit" or 
+           name == "emergencyexit" or name == "fireexit" or name == "mainexit" then
+            -- Verifica se já não foi adicionado
+            local alreadyAdded = false
+            for _, existing in ipairs(exits) do
+                if existing == obj then
+                    alreadyAdded = true
+                    break
+                end
+            end
+            if not alreadyAdded then
+                table.insert(exits, obj)
+            end
+        end
+    end
+end
+
+-- MÉTODO 3: Procura por filhos que indicam porta de saída (triggers, prompts, etc)
+for _, obj in ipairs(workspace:GetDescendants()) do
+    if obj:IsA("Model") or obj:IsA("Part") or obj:IsA("Folder") then
+        -- Verifica se tem componentes de porta de saída
+        if obj:FindFirstChild("ExitDoorTrigger") or obj:FindFirstChild("ExitZone") or 
+           obj:FindFirstChild("ExitPrompt") or obj:FindFirstChild("ExitDoor") or
+           obj:FindFirstChild("DoorPrompt") or obj:FindFirstChild("OpenPrompt") or
+           obj:FindFirstChild("ExitPart") then
+            
+            local alreadyAdded = false
+            for _, existing in ipairs(exits) do
+                if existing == obj then
+                    alreadyAdded = true
+                    break
+                end
+            end
+            if not alreadyAdded then
+                table.insert(exits, obj)
+            end
+        end
+        
+        -- Verifica se tem luz de status de saída (indicador comum)
+        for _, child in ipairs(obj:GetChildren()) do
+            if child:IsA("Light") or child:IsA("SpotLight") or child:IsA("PointLight") then
+                local lightName = child.Name:lower()
+                if lightName:find("exit") or lightName:find("status") then
+                    local alreadyAdded = false
+                    for _, existing in ipairs(exits) do
+                        if existing == obj then
+                            alreadyAdded = true
+                            break
+                        end
+                    end
+                    if not alreadyAdded then
+                        table.insert(exits, obj)
+                    end
+                    break
+                end
+            end
+        end
+    end
+end
+
+-- Cria highlights para todas as saídas encontradas (devem ser 2 por mapa)
+for _, obj in ipairs(exits) do
+    local success, hl = pcall(function()
+        local h = Instance.new("Highlight")
+        h.Name = "ExitESP"
+        
+        -- Define o Adornee corretamente
+        if obj:IsA("Model") then
+            h.Adornee = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart") or obj
+        else
+            h.Adornee = obj
+        end
+        
+        -- COR AMARELA BRILHANTE para saídas
+        h.OutlineColor = Color3.fromRGB(255, 255, 0) -- AMARELO PURO
+        h.FillTransparency = 1
+        h.OutlineTransparency = 0
+        h.Enabled = true
+        h.Parent = obj
+        
+        return h
+    end)
+    
+    if success then
+        exitHighlights[obj] = hl
+    end
+end
+
+print("ESP Exit: Encontradas " .. #exits .. " saídas")
+
+end
+-- =============================================
+-- LOOP DE ATUALIZAÇÃO OTIMIZADO
+-- =============================================
+local function startOptimizedUpdates()
+-- Atualiza Beast a cada 0.5 segundos (rápido para detectar mudanças)
+task.spawn(function()
+while true do
+task.wait(0.5)
+if espStates.Beast then
+checkBeastChanged()
+end
+end
+end)
+-- Atualiza Player a cada 2 segundos
+task.spawn(function()
+    while true do
+        task.wait(2)
+        if espStates.Player then
+            updatePlayerHighlights()
+        end
+    end
+end)
+
+-- Atualiza PCs frequentemente para detectar mudanças de cor
+task.spawn(function()
+    while true do
+        task.wait(0.5) -- Atualiza a cada 0.5 segundo para garantir detecção rápida
+        if espStates.PC then 
+            -- Verifica se algum PC mudou de status
+            for computer, highlight in pairs(pcHighlights) do
+                if highlight and highlight.Parent then
+                    updatePCHighlightColor(computer, highlight)
+                end
+            end
+        end
+    end
+end)
+
+-- Atualiza Capsulas e Exits a cada 3 segundos
+task.spawn(function()
+    while true do
+        task.wait(3)
+        if espStates.Capsule then updateCapsuleHighlights() end
+        if espStates.Exit then updateExitHighlights() end
+    end
+end)
+
+end
+-- Inicia atualizações
+startOptimizedUpdates()
+-- Eventos de jogadores
+game.Players.PlayerAdded:Connect(function()
+task.wait(1)
+if espStates.Player then updatePlayerHighlights() end
+if espStates.Beast then updateBeastHighlight() end
+end)
+game.Players.PlayerRemoving:Connect(function(plr)
+if playerHighlights[plr] then
+pcall(function() playerHighlights[plr]:Destroy() end)
+playerHighlights[plr] = nil
+end
+if plr == beastTarget then
+beastTarget = nil
+updateBeastHighlight()
+end
+end)
+-- Atualiza quando character muda
+player.CharacterAdded:Connect(function()
+task.wait(1)
+if espStates.Player then updatePlayerHighlights() end
+if espStates.Beast then updateBeastHighlight() end
+end)
+-- =============================================
+-- NO ERRO
+-- =============================================
+local noErrorEnabled = false
+task.spawn(function()
+while true do
+task.wait(0.15)
+if noErrorEnabled then
+local remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvent", true)
+if remote then
+pcall(function()
+remote:FireServer("SetPlayerMinigameResult", true)
+end)
+end
+end
+end
+end)
+-- =============================================
+-- CRIAR CHECKBOXES
+-- =============================================
+createCheckbox("ESP PLAYER", function(state)
+espStates.Player = state
+updatePlayerHighlights()
+end)
+createCheckbox("ESP BEAST", function(state)
+espStates.Beast = state
+updateBeastHighlight()
+end)
+createCheckbox("ESP PC", function(state)
+espStates.PC = state
+updatePCHighlights()
+end)
+createCheckbox("ESP CAPSULA", function(state)
+espStates.Capsule = state
+updateCapsuleHighlights()
+end)
+createCheckbox("ESP EXIT", function(state)
+espStates.Exit = state
+updateExitHighlights()
+end)
+createCheckbox("NO ERRO", function(state)
+noErrorEnabled = state
+end)
+-- =============================================
+-- ABERTURA DO PAINEL
+-- =============================================
+imageButton.MouseButton1Click:Connect(function()
+panel.Visible = not panel.Visible
+if panel.Visible then
+task.delay(0.1, updateCanvasSize)
+end
+end)
+-- Atualiza rolagem inicial
+task.spawn(function()
+task.wait(0.5)
+updateCanvasSize()
+end)
+print("Snow Store | Flee the Facility - Completo e Corrigido Carregado!")
+print("ESP PC: Pega em TODOS os computadores do mapa automaticamente")
+print("ESP Exit: Procura por 'ExitDoor' e padroes de saída em todos os mapas")
